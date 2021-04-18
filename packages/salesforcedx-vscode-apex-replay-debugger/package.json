@@ -28,7 +28,7 @@
     "@salesforce/core": "2.13.0",
     "@salesforce/salesforcedx-apex-replay-debugger": "51.2.0",
     "@salesforce/salesforcedx-utils-vscode": "51.2.0",
-    "async-lock": "1.0.0",
+    "async-lock": "1.2.8",
     "path-exists": "3.0.0",
     "request-light": "0.2.4",
     "vscode-extension-telemetry": "0.0.17"
