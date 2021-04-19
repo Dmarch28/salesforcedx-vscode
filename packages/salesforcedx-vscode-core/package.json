@@ -15,7 +15,7 @@
     "theme": "light"
   },
   "aiKey": "ec3632a4-df47-47a4-98dc-8134cacbaf7e",
-  "version": "45.15.1",
+  "version": "46.8.0",
   "publisher": "salesforce",
   "license": "BSD-3-Clause",
   "engines": {
@@ -25,8 +25,8 @@
     "Other"
   ],
   "dependencies": {
-    "@salesforce/core": "1.3.3",
-    "@salesforce/salesforcedx-utils-vscode": "45.15.1",
+    "@salesforce/core": "2.0.1",
+    "@salesforce/salesforcedx-utils-vscode": "46.8.0",
     "adm-zip": "0.4.13",
     "applicationinsights": "1.0.6",
     "glob": "^7.1.2",
@@ -36,7 +36,7 @@
     "shelljs": "0.8.3"
   },
   "devDependencies": {
-    "@salesforce/salesforcedx-test-utils-vscode": "45.15.1",
+    "@salesforce/salesforcedx-test-utils-vscode": "46.8.0",
     "@types/adm-zip": "^0.4.31",
     "@types/chai": "^4.0.0",
     "@types/glob": "^5.0.30",
@@ -95,15 +95,32 @@
         {
           "id": "metadata",
           "name": "Metadata",
-          "when": "sfdx:display_tree_view"
+          "when": "config.salesforcedx-vscode-core.orgBrowser.enabled && sfdx:project_opened && sfdx:default_username_has_no_change_tracking"
         }
       ]
     },
     "menus": {
+      "view/title": [
+        {
+          "command": "sfdx.force.metadata.view.type.refresh",
+          "when": "view == metadata",
+          "group": "navigation"
+        }
+      ],
       "view/item/context": [
         {
           "command": "sfdx.force.task.stop",
           "when": "view == sfdx.force.tasks.view"
+        },
+        {
+          "command": "sfdx.force.metadata.view.component.refresh",
+          "when": "view == metadata && viewItem =~ /(folder|type)/",
+          "group": "inline"
+        },
+        {
+          "command": "sfdx.force.source.retrieve.component",
+          "when": "view == metadata && viewItem == component",
+          "group": "inline"
         }
       ],
       "editor/context": [
@@ -420,211 +437,287 @@
     "commands": [
       {
         "command": "sfdx.force.auth.dev.hub",
-        "title": "%force_auth_web_login_authorize_dev_hub_text%"
+        "title": "%force_auth_web_login_authorize_dev_hub_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.auth.web.login",
-        "title": "%force_auth_web_login_authorize_org_text%"
+        "title": "%force_auth_web_login_authorize_org_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.auth.logout.all",
-        "title": "%force_auth_logout_all_text%"
+        "title": "%force_auth_logout_all_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.org.create",
-        "title": "%force_org_create_default_scratch_org_text%"
+        "title": "%force_org_create_default_scratch_org_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.org.open",
-        "title": "%force_org_open_default_scratch_org_text%"
+        "title": "%force_org_open_default_scratch_org_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.pull",
-        "title": "%force_source_pull_default_scratch_org_text%"
+        "title": "%force_source_pull_default_scratch_org_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.pull.force",
-        "title": "%force_source_pull_force_default_scratch_org_text%"
+        "title": "%force_source_pull_force_default_scratch_org_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.push",
-        "title": "%force_source_push_default_scratch_org_text%"
+        "title": "%force_source_push_default_scratch_org_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.push.force",
-        "title": "%force_source_push_force_default_scratch_org_text%"
+        "title": "%force_source_push_force_default_scratch_org_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.status",
-        "title": "%force_source_status_text%"
+        "title": "%force_source_status_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.status.local",
-        "title": "%force_source_status_local_text%"
+        "title": "%force_source_status_local_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.status.remote",
-        "title": "%force_source_status_remote_text%"
+        "title": "%force_source_status_remote_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.apex.test.run",
-        "title": "%force_apex_test_run_text%"
+        "title": "%force_apex_test_run_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.task.stop",
-        "title": "%cancel_sfdx_command_text%"
+        "title": "%cancel_sfdx_command_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.apex.class.create",
-        "title": "%force_apex_class_create_text%"
+        "title": "%force_apex_class_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.visualforce.component.create",
-        "title": "%force_visualforce_component_create_text%"
+        "title": "%force_visualforce_component_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.visualforce.page.create",
-        "title": "%force_visualforce_page_create_text%"
+        "title": "%force_visualforce_page_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.lightning.app.create",
-        "title": "%force_lightning_app_create_text%"
+        "title": "%force_lightning_app_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.internal.lightning.app.create",
-        "title": "%force_lightning_app_create_text%"
+        "title": "%force_lightning_app_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.lightning.component.create",
-        "title": "%force_lightning_component_create_text%"
+        "title": "%force_lightning_component_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.internal.lightning.component.create",
-        "title": "%force_lightning_component_create_text%"
+        "title": "%force_lightning_component_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.lightning.event.create",
-        "title": "%force_lightning_event_create_text%"
+        "title": "%force_lightning_event_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.internal.lightning.event.create",
-        "title": "%force_lightning_event_create_text%"
+        "title": "%force_lightning_event_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.lightning.interface.create",
-        "title": "%force_lightning_interface_create_text%"
+        "title": "%force_lightning_interface_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.internal.lightning.interface.create",
-        "title": "%force_lightning_interface_create_text%"
+        "title": "%force_lightning_interface_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.debugger.stop",
-        "title": "%force_debugger_stop_text%"
+        "title": "%force_debugger_stop_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.config.list",
-        "title": "%force_config_list_text%"
+        "title": "%force_config_list_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.alias.list",
-        "title": "%force_alias_list_text%"
+        "title": "%force_alias_list_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.org.display.default",
-        "title": "%force_org_display_default_text%"
+        "title": "%force_org_display_default_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.org.display.username",
-        "title": "%force_org_display_username_text%"
+        "title": "%force_org_display_username_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.data.soql.query.input",
-        "title": "%force_data_soql_query_input_text%"
+        "title": "%force_data_soql_query_input_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.data.soql.query.selection",
-        "title": "%force_data_soql_query_selection_text%"
+        "title": "%force_data_soql_query_selection_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.apex.execute.document",
-        "title": "%force_apex_execute_document_text%"
+        "title": "%force_apex_execute_document_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.apex.execute.selection",
-        "title": "%force_apex_execute_selection_text%"
+        "title": "%force_apex_execute_selection_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.project.create",
-        "title": "%force_project_create_text%"
+        "title": "%force_project_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.project.with.manifest.create",
-        "title": "%force_project_with_manifest_create_text%"
+        "title": "%force_project_with_manifest_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.apex.trigger.create",
-        "title": "%force_apex_trigger_create_text%"
+        "title": "%force_apex_trigger_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.start.apex.debug.logging",
-        "title": "%force_start_apex_debug_logging%"
+        "title": "%force_start_apex_debug_logging%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.stop.apex.debug.logging",
-        "title": "%force_stop_apex_debug_logging%"
+        "title": "%force_stop_apex_debug_logging%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.debug.isv.bootstrap",
-        "title": "%isv_bootstrap_command_text%"
+        "title": "%isv_bootstrap_command_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.apex.log.get",
-        "title": "%force_apex_log_get_text%"
+        "title": "%force_apex_log_get_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.retrieve.source.path",
-        "title": "%force_source_retrieve_text%"
+        "title": "%force_source_retrieve_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.retrieve.current.source.file",
-        "title": "%force_source_retrieve_this_source_text%"
+        "title": "%force_source_retrieve_this_source_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.retrieve.in.manifest",
-        "title": "%force_source_retrieve_in_manifest_text%"
+        "title": "%force_source_retrieve_in_manifest_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.deploy.source.path",
-        "title": "%force_source_deploy_text%"
+        "title": "%force_source_deploy_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.deploy.current.source.file",
-        "title": "%force_source_deploy_this_source_text%"
+        "title": "%force_source_deploy_this_source_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.deploy.in.manifest",
-        "title": "%force_source_deploy_in_manifest_text%"
+        "title": "%force_source_deploy_in_manifest_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.delete",
-        "title": "%force_source_delete_text%"
+        "title": "%force_source_delete_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.source.delete.current.file",
-        "title": "%force_source_delete_this_source_text%"
+        "title": "%force_source_delete_this_source_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.set.default.org",
-        "title": "%force_config_set_org_text%"
+        "title": "%force_config_set_org_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.force.lightning.lwc.create",
-        "title": "%force_lightning_lwc_create_text%"
+        "title": "%force_lightning_lwc_create_text%",
+        "category": "SFDX"
       },
       {
         "command": "sfdx.internal.lightning.lwc.create",
-        "title": "%force_lightning_lwc_create_text%"
+        "title": "%force_lightning_lwc_create_text%",
+        "category": "SFDX"
+      },
+      {
+        "command": "sfdx.force.metadata.view.type.refresh",
+        "title": "%refresh_types_text%",
+        "icon": {
+          "light": "resources/light/refresh.svg",
+          "dark": "resources/dark/refresh.svg"
+        }
+      },
+      {
+        "command": "sfdx.force.metadata.view.component.refresh",
+        "title": "%refresh_components_text%",
+        "icon": {
+          "light": "resources/light/refresh.svg",
+          "dark": "resources/dark/refresh.svg"
+        }
+      },
+      {
+        "command": "sfdx.force.source.retrieve.component",
+        "title": "%force_source_retrieve_display_text%",
+        "icon": {
+          "light": "resources/light/retrieve.svg",
+          "dark": "resources/dark/retrieve.svg"
+        }
       }
     ],
     "configuration": {
@@ -632,39 +725,34 @@
       "title": "%feature_previews_title%",
       "properties": {
         "salesforcedx-vscode-core.show-cli-success-msg": {
-          "type": [
-            "boolean"
-          ],
+          "type": "boolean",
           "default": true,
           "description": "%show_cli_success_msg_description%"
         },
         "salesforcedx-vscode-core.retrieve-test-code-coverage": {
-          "type": [
-            "boolean"
-          ],
+          "type": "boolean",
           "default": false,
           "description": "%retrieve_test_code_coverage_text%"
         },
         "salesforcedx-vscode-core.telemetry.enabled": {
-          "type": [
-            "boolean"
-          ],
+          "type": "boolean",
           "default": true,
           "description": "%telemetry_enabled_description%"
         },
         "salesforcedx-vscode-core.push-or-deploy-on-save.enabled": {
-          "type": [
-            "boolean"
-          ],
+          "type": "boolean",
           "default": false,
           "description": "%push_or_deploy_on_save_enabled_description%"
         },
         "salesforcedx-vscode-core.internal-development": {
-          "type": [
-            "boolean"
-          ],
+          "type": "boolean",
           "default": false,
           "description": "%internal_dev_description%"
+        },
+        "salesforcedx-vscode-core.orgBrowser.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%org_browser_enabled_description%"
         }
       }
     },
@@ -713,10 +801,5 @@
         "path": "./syntaxes/manifestXML.tmLanguage.json"
       }
     ]
-  },
-  "__metadata": {
-    "id": "1d9d0701-6f65-4174-a1a6-5720ffa59b61",
-    "publisherDisplayName": "Salesforce",
-    "publisherId": "656b996d-3c70-47b4-937e-e77c013faeea"
   }
 }
