@@ -16,7 +16,7 @@ import {
   SfdxCommandlet,
   SfdxCommandletExecutor,
   SfdxWorkspaceChecker
-} from './util';
+} from './commands';
 
 import { getRootWorkspacePath } from '../util';
 
@@ -33,8 +33,6 @@ import { ConfigSource, OrgAuthInfo } from '../util/index';
 import { ForceAuthDemoModeExecutor } from './forceAuthWebLogin';
 
 export class ForceAuthDevHubExecutor extends SfdxCommandletExecutor<{}> {
-  protected showChannelOutput = isSFDXContainerMode();
-
   public build(data: {}): Command {
     const command = new SfdxCommandBuilder().withDescription(
       nls.localize('force_auth_web_login_authorize_dev_hub_text')
@@ -115,7 +113,7 @@ export class ForceAuthDevHubDemoModeExecutor extends ForceAuthDemoModeExecutor<{
 const workspaceChecker = new SfdxWorkspaceChecker();
 const parameterGatherer = new EmptyParametersGatherer();
 
-export function createAuthDevHubExecutor(): SfdxCommandletExecutor<{}> {
+export function createExecutor(): SfdxCommandletExecutor<{}> {
   return isDemoMode()
     ? new ForceAuthDevHubDemoModeExecutor()
     : new ForceAuthDevHubExecutor();
@@ -125,7 +123,7 @@ export async function forceAuthDevHub() {
   const commandlet = new SfdxCommandlet(
     workspaceChecker,
     parameterGatherer,
-    createAuthDevHubExecutor()
+    createExecutor()
   );
   await commandlet.run();
 }
