@@ -1,18 +1,30 @@
 #!/usr/bin/env node
 
-const path = require('path');
-const { runIntegrationTests } = require('./vscode-integration-testrunner');
+const shell = require('shelljs');
+shell.set('-e');
+shell.set('+v');
 
+const path = require('path');
 const cwd = process.cwd();
-runIntegrationTests({
-  extensionDevelopmentPath: path.join(__dirname, '..', 'packages'),
-  extensionTestsPath: path.join(cwd, 'out', 'test', 'vscode-integration'),
-  testWorkspace: path.join(
+
+// Executes the test, using the top-level packages as the CODE_EXTENSIONS_PATH
+
+shell.exec(
+  `cross-env CODE_VERSION='1.32.0' CODE_EXTENSIONS_PATH='${path.join(
+    __dirname,
+    '..',
+    'packages'
+  )}' CODE_TESTS_WORKSPACE='${path.join(
     __dirname,
     '..',
     'packages',
     'system-tests',
     'assets',
     'sfdx-simple'
-  )
-});
+  )}' CODE_TESTS_PATH='${path.join(
+    cwd,
+    'out',
+    'test',
+    'vscode-integration'
+  )}' node ./node_modules/vscode/bin/test`
+);

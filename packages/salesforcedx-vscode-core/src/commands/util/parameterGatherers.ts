@@ -1,26 +1,74 @@
 /*
- * Copyright (c) 2019, salesforce.com, inc.
+ * Copyright (c) 2017, salesforce.com, inc.
  * All rights reserved.
  * Licensed under the BSD 3-Clause license.
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
+
+import {
+  CliCommandExecutor,
+  Command,
+  CommandExecution
+} from '@salesforce/salesforcedx-utils-vscode/out/src/cli';
 import {
   CancelResponse,
   ContinueResponse,
-  LocalComponent,
-  ParametersGatherer
+  ParametersGatherer,
+  PostconditionChecker,
+  PreconditionChecker
 } from '@salesforce/salesforcedx-utils-vscode/out/src/types';
-import { ComponentSet, registryData } from '@salesforce/source-deploy-retrieve';
-import glob = require('glob');
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { nls } from '../../messages';
-import { SfdxPackageDirectories } from '../../sfdxProject';
-import { getRootWorkspacePath, hasRootWorkspace } from '../../util';
-import { RetrieveDescriber } from '../forceSourceRetrieveMetadata';
+import glob = require('glob');
+import { isNullOrUndefined } from 'util';
+import { channelService } from '../channels';
+import { nls } from '../messages';
+import { notificationService, ProgressNotification } from '../notifications';
+import { isSfdxProjectOpened } from '../predicates';
+import { SfdxPackageDirectories } from '../sfdxProject';
+import { taskViewService } from '../statuses';
+import { telemetryService } from '../telemetry';
+import { getRootWorkspacePath, hasRootWorkspace, OrgAuthInfo } from '../util';
+
+export class EmptyPostChecker implements PostconditionChecker<any> {
+  public async check(
+    inputs: ContinueResponse<any> | CancelResponse
+  ): Promise<ContinueResponse<any> | CancelResponse> {
+    return inputs;
+  }
+}
+
+export class SfdxWorkspaceChecker implements PreconditionChecker {
+  public check(): boolean {
+    const result = isSfdxProjectOpened.apply(vscode.workspace);
+    if (!result.result) {
+      notificationService.showErrorMessage(result.message);
+      return false;
+    }
+    return true;
+  }
+}
+export class DevUsernameChecker implements PreconditionChecker {
+  public async check(): Promise<boolean> {
+    const hasWorkspace = new SfdxWorkspaceChecker().check();
+    if (
+      !hasWorkspace ||
+      isNullOrUndefined(await OrgAuthInfo.getDefaultDevHubUsernameOrAlias(true))
+    ) {
+      return Promise.resolve(false);
+    }
+    return Promise.resolve(true);
+  }
+}
+
+export class EmptyPreChecker implements PreconditionChecker {
+  public check(): boolean {
+    return true;
+  }
+}
 
 export class CompositeParametersGatherer<T> implements ParametersGatherer<T> {
-  private readonly gatherers: Array<ParametersGatherer<any>>;
+  public readonly gatherers: Array<ParametersGatherer<any>>;
   public constructor(...gatherers: Array<ParametersGatherer<any>>) {
     this.gatherers = gatherers;
   }
@@ -67,21 +115,11 @@ export class FilePathGatherer implements ParametersGatherer<string> {
 
 export type FileSelection = { file: string };
 export class FileSelector implements ParametersGatherer<FileSelection> {
-  private readonly displayMessage: string;
-  private readonly errorMessage: string;
   private readonly include: string;
   private readonly exclude?: string;
   private readonly maxResults?: number;
 
-  constructor(
-    displayMessage: string,
-    errorMessage: string,
-    include: string,
-    exclude?: string,
-    maxResults?: number
-  ) {
-    this.displayMessage = displayMessage;
-    this.errorMessage = errorMessage;
+  constructor(include: string, exclude?: string, maxResults?: number) {
     this.include = include;
     this.exclude = exclude;
     this.maxResults = maxResults;
@@ -101,13 +139,7 @@ export class FileSelector implements ParametersGatherer<FileSelection> {
         description: file.fsPath
       };
     });
-    if (fileItems.length === 0) {
-      vscode.window.showErrorMessage(this.errorMessage);
-      return { type: 'CANCEL' };
-    }
-    const selection = await vscode.window.showQuickPick(fileItems, {
-      placeHolder: this.displayMessage
-    });
+    const selection = await vscode.window.showQuickPick(fileItems);
     return selection
       ? { type: 'CONTINUE', data: { file: selection.description.toString() } }
       : { type: 'CANCEL' };
@@ -126,102 +158,6 @@ export class SelectFileName
     return fileName
       ? { type: 'CONTINUE', data: { fileName } }
       : { type: 'CANCEL' };
-  }
-}
-
-export class SelectUsername
-  implements ParametersGatherer<{ username: string }> {
-  public async gather(): Promise<
-    CancelResponse | ContinueResponse<{ username: string }>
-  > {
-    const usernameInputOptions = {
-      prompt: nls.localize('parameter_gatherer_enter_username_name')
-    } as vscode.InputBoxOptions;
-    const username = await vscode.window.showInputBox(usernameInputOptions);
-    return username
-      ? { type: 'CONTINUE', data: { username } }
-      : { type: 'CANCEL' };
-  }
-}
-
-export class DemoModePromptGatherer implements ParametersGatherer<{}> {
-  private readonly LOGOUT_RESPONSE = 'Cancel';
-  private readonly DO_NOT_LOGOUT_RESPONSE = 'Authorize Org';
-  private readonly prompt = nls.localize('demo_mode_prompt');
-
-  public async gather(): Promise<CancelResponse | ContinueResponse<{}>> {
-    const response = await vscode.window.showInformationMessage(
-      this.prompt,
-      this.DO_NOT_LOGOUT_RESPONSE,
-      this.LOGOUT_RESPONSE
-    );
-
-    return response && response === this.LOGOUT_RESPONSE
-      ? { type: 'CONTINUE', data: {} }
-      : { type: 'CANCEL' };
-  }
-}
-
-export class SelectLwcComponentDir
-  implements ParametersGatherer<{ fileName: string; outputdir: string }> {
-  public async gather(): Promise<
-    CancelResponse | ContinueResponse<{ fileName: string; outputdir: string }>
-  > {
-    let packageDirs: string[] = [];
-    try {
-      packageDirs = await SfdxPackageDirectories.getPackageDirectoryPaths();
-    } catch (e) {
-      if (
-        e.name !== 'NoPackageDirectoryPathsFound' &&
-        e.name !== 'NoPackageDirectoriesFound'
-      ) {
-        throw e;
-      }
-    }
-    const packageDir = await this.showMenu(
-      packageDirs,
-      'parameter_gatherer_enter_dir_name'
-    );
-    let outputdir;
-    const namePathMap = new Map();
-    let fileName;
-    if (packageDir) {
-      const pathToPkg = path.join(getRootWorkspacePath(), packageDir);
-      const components = ComponentSet.fromSource(pathToPkg);
-
-      const lwcNames = [];
-      for (const component of components.getSourceComponents() || []) {
-        const { fullName, type } = component;
-        if (type.name === registryData.types.lightningcomponentbundle.name) {
-          namePathMap.set(fullName, component.xml);
-          lwcNames.push(fullName);
-        }
-      }
-      const chosenLwcName = await this.showMenu(
-        lwcNames,
-        'parameter_gatherer_enter_lwc_name'
-      );
-      const filePathToXml = namePathMap.get(chosenLwcName);
-      fileName = path.basename(filePathToXml, '.js-meta.xml');
-      // Path strategy expects a relative path to the output folder
-      outputdir = path.dirname(filePathToXml).replace(pathToPkg, packageDir);
-    }
-
-    return outputdir && fileName
-      ? {
-          type: 'CONTINUE',
-          data: { fileName, outputdir }
-        }
-      : { type: 'CANCEL' };
-  }
-
-  public async showMenu(
-    options: string[],
-    message: string
-  ): Promise<string | undefined> {
-    return await vscode.window.showQuickPick(options, {
-      placeHolder: nls.localize(message)
-    } as vscode.QuickPickOptions);
   }
 }
 
@@ -253,7 +189,6 @@ export class SelectOutputDir
         throw e;
       }
     }
-
     let dirOptions = this.getDefaultOptions(packageDirs);
     let outputdir = await this.showMenu(dirOptions);
 
@@ -299,66 +234,130 @@ export class SelectOutputDir
   }
 }
 
-export class SimpleGatherer<T> implements ParametersGatherer<T> {
-  private input: T;
-
-  constructor(input: T) {
-    this.input = input;
-  }
-
-  public async gather(): Promise<ContinueResponse<T>> {
-    return {
-      type: 'CONTINUE',
-      data: this.input
-    };
-  }
+export interface FlagParameter<T> {
+  flag: T;
 }
 
-export class RetrieveComponentOutputGatherer
-  implements ParametersGatherer<LocalComponent[]> {
-  private describer: RetrieveDescriber;
-
-  constructor(describer: RetrieveDescriber) {
-    this.describer = describer;
-  }
-
+export class SelectUsername
+  implements ParametersGatherer<{ username: string }> {
   public async gather(): Promise<
-    CancelResponse | ContinueResponse<LocalComponent[]>
+    CancelResponse | ContinueResponse<{ username: string }>
   > {
-    return {
-      type: 'CONTINUE',
-      data: await this.describer.gatherOutputLocations()
-    };
-  }
-}
-
-export class MetadataTypeGatherer extends SimpleGatherer<{ type: string }> {
-  constructor(metadataType: string) {
-    super({ type: metadataType });
-  }
-}
-
-export class PromptConfirmGatherer
-  implements ParametersGatherer<{ choice: string }> {
-  private question: string;
-
-  constructor(question: string) {
-    this.question = question;
-  }
-  public async gather(): Promise<
-    CancelResponse | ContinueResponse<{ choice: string }>
-  > {
-    const confirmOpt = nls.localize('parameter_gatherer_prompt_confirm_option');
-    const cancelOpt = nls.localize('parameter_gatherer_prompt_cancel_option');
-    const choice = await this.showMenu([cancelOpt, confirmOpt]);
-    return confirmOpt === choice
-      ? { type: 'CONTINUE', data: { choice } }
+    const usernameInputOptions = {
+      prompt: nls.localize('parameter_gatherer_enter_username_name')
+    } as vscode.InputBoxOptions;
+    const username = await vscode.window.showInputBox(usernameInputOptions);
+    return username
+      ? { type: 'CONTINUE', data: { username } }
       : { type: 'CANCEL' };
   }
+}
 
-  public async showMenu(options: string[]): Promise<string | undefined> {
-    return await vscode.window.showQuickPick(options, {
-      placeHolder: this.question
-    } as vscode.QuickPickOptions);
+export class DemoModePromptGatherer implements ParametersGatherer<{}> {
+  private readonly LOGOUT_RESPONSE = 'Cancel';
+  private readonly DO_NOT_LOGOUT_RESPONSE = 'Authorize Org';
+  private readonly prompt = nls.localize('demo_mode_prompt');
+
+  public async gather(): Promise<CancelResponse | ContinueResponse<{}>> {
+    const response = await vscode.window.showInformationMessage(
+      this.prompt,
+      this.DO_NOT_LOGOUT_RESPONSE,
+      this.LOGOUT_RESPONSE
+    );
+
+    return response && response === this.LOGOUT_RESPONSE
+      ? { type: 'CONTINUE', data: {} }
+      : { type: 'CANCEL' };
+  }
+}
+
+// Command Execution
+////////////////////
+export interface CommandletExecutor<T> {
+  execute(response: ContinueResponse<T>): void;
+}
+
+// Common
+
+export abstract class SfdxCommandletExecutor<T>
+  implements CommandletExecutor<T> {
+  protected showChannelOutput = true;
+
+  protected attachExecution(
+    execution: CommandExecution,
+    cancellationTokenSource: vscode.CancellationTokenSource,
+    cancellationToken: vscode.CancellationToken
+  ) {
+    channelService.streamCommandOutput(execution);
+
+    if (this.showChannelOutput) {
+      channelService.showChannelOutput();
+    }
+
+    notificationService.reportCommandExecutionStatus(
+      execution,
+      cancellationToken
+    );
+    ProgressNotification.show(execution, cancellationTokenSource);
+    taskViewService.addCommandExecution(execution, cancellationTokenSource);
+  }
+
+  public logMetric(
+    logName: string | undefined,
+    executionTime: [number, number],
+    additionalData?: any
+  ) {
+    telemetryService.sendCommandEvent(logName, executionTime, additionalData);
+  }
+
+  public execute(response: ContinueResponse<T>): void {
+    const startTime = process.hrtime();
+    const cancellationTokenSource = new vscode.CancellationTokenSource();
+    const cancellationToken = cancellationTokenSource.token;
+    const execution = new CliCommandExecutor(this.build(response.data), {
+      cwd: getRootWorkspacePath()
+    }).execute(cancellationToken);
+
+    execution.processExitSubject.subscribe(() => {
+      this.logMetric(execution.command.logName, startTime);
+    });
+    this.attachExecution(execution, cancellationTokenSource, cancellationToken);
+  }
+
+  public abstract build(data: T): Command;
+}
+
+export class SfdxCommandlet<T> {
+  private readonly prechecker: PreconditionChecker;
+  private readonly postchecker: PostconditionChecker<T>;
+  private readonly gatherer: ParametersGatherer<T>;
+  private readonly executor: CommandletExecutor<T>;
+
+  constructor(
+    checker: PreconditionChecker,
+    gatherer: ParametersGatherer<T>,
+    executor: CommandletExecutor<T>,
+    postchecker = new EmptyPostChecker()
+  ) {
+    this.prechecker = checker;
+    this.gatherer = gatherer;
+    this.executor = executor;
+    this.postchecker = postchecker;
+  }
+
+  public async run(): Promise<void> {
+    if (await this.prechecker.check()) {
+      let inputs = await this.gatherer.gather();
+      inputs = await this.postchecker.check(inputs);
+      switch (inputs.type) {
+        case 'CONTINUE':
+          return this.executor.execute(inputs);
+        case 'CANCEL':
+          if (inputs.msg) {
+            notificationService.showErrorMessage(inputs.msg);
+          }
+          return;
+      }
+    }
   }
 }

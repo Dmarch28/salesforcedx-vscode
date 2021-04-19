@@ -7,6 +7,7 @@
 import * as path from 'path';
 
 import {
+  CancellationToken,
   Color,
   ColorInformation,
   ColorPresentation,
@@ -15,11 +16,9 @@ import {
   IndentAction,
   languages,
   Position,
-  Range,
   TextDocument
 } from 'vscode';
 import {
-  BaseLanguageClient,
   LanguageClient,
   LanguageClientOptions,
   RequestType,
@@ -30,13 +29,13 @@ import {
 import { EMPTY_ELEMENTS } from './htmlEmptyTagsShared';
 import { activateTagClosing } from './tagClosing';
 
-import { ConfigurationFeature } from 'vscode-languageclient/lib/configuration';
+import { ConfigurationFeature } from 'vscode-languageclient/lib/configuration.proposed';
 import {
   ColorPresentationParams,
   ColorPresentationRequest,
   DocumentColorParams,
   DocumentColorRequest
-} from 'vscode-languageserver-protocol';
+} from 'vscode-languageserver-protocol/lib/protocol.colorProvider.proposed';
 import { telemetryService } from './telemetry';
 
 // tslint:disable-next-line:no-namespace
@@ -138,15 +137,19 @@ export async function activate(context: ExtensionContext) {
             });
         },
         provideColorPresentations(
-          color: Color,
-          colorContext: { document: TextDocument; range: Range }
+          colorInfo: Color,
+          // tslint:disable-next-line:no-shadowed-variable
+          context: { document: TextDocument; range: Range },
+          token: CancellationToken
         ): Thenable<ColorPresentation[]> {
           const params: ColorPresentationParams = {
             textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
-              colorContext.document
+              context.document
             ),
-            range: client.code2ProtocolConverter.asRange(colorContext.range),
-            color
+            colorInfo: {
+              range: client.code2ProtocolConverter.asRange(context.range),
+              color: colorInfo.color
+            }
           };
           return client
             .sendRequest(ColorPresentationRequest.type, params)
@@ -271,6 +274,8 @@ export async function activate(context: ExtensionContext) {
   );
 
   if (sfdxCoreExtension && sfdxCoreExtension.exports) {
+    sfdxCoreExtension.exports.telemetryService.showTelemetryMessage();
+
     telemetryService.initializeService(
       sfdxCoreExtension.exports.telemetryService.getReporter(),
       sfdxCoreExtension.exports.telemetryService.isTelemetryEnabled()

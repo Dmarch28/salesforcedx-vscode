@@ -14,31 +14,31 @@
     "color": "#ECECEC",
     "theme": "light"
   },
-  "version": "51.2.0",
+  "version": "45.15.1",
   "publisher": "salesforce",
   "license": "BSD-3-Clause",
   "engines": {
-    "vscode": "^1.46.0"
+    "vscode": "^1.32.0"
   },
   "categories": [
     "Debuggers"
   ],
   "dependencies": {
-    "@salesforce/salesforcedx-apex-debugger": "51.2.0",
+    "@salesforce/salesforcedx-apex-debugger": "45.15.1",
     "vscode-debugprotocol": "1.28.0",
     "vscode-extension-telemetry": "0.0.17"
   },
   "devDependencies": {
-    "@salesforce/salesforcedx-test-utils-vscode": "51.2.0",
+    "@salesforce/salesforcedx-test-utils-vscode": "45.15.1",
     "@types/chai": "^4.0.0",
-    "@types/mocha": "^5",
-    "@types/node": "12.0.12",
+    "@types/mocha": "2.2.38",
+    "@types/node": "8.9.3",
     "@types/sinon": "^2.3.2",
-    "@types/vscode": "1.46.0",
     "chai": "^4.0.2",
     "cross-env": "5.2.0",
-    "mocha": "^5",
-    "sinon": "^7.3.1"
+    "mocha": "3.2.0",
+    "sinon": "^2.3.6",
+    "vscode": "1.1.17"
   },
   "extensionDependencies": [
     "salesforce.salesforcedx-vscode-apex",
@@ -53,6 +53,7 @@
     "lint": "tslint --project .",
     "watch": "tsc -watch -p .",
     "clean": "shx rm -rf node_modules && shx rm -rf out && shx rm -rf coverage && shx rm -rf .nyc_output",
+    "postinstall": "node ./node_modules/vscode/bin/install",
     "test": "npm run test:vscode-integration",
     "test:vscode-integration": "node ../../scripts/run-vscode-integration-tests-with-top-level-extensions",
     "test:vscode-insiders-integration": "cross-env CODE_VERSION=insiders npm run test:vscode-integration"
@@ -180,8 +181,7 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "sfdx.debug.exception.breakpoint",
-          "when": "sfdx:project_opened"
+          "command": "sfdx.debug.exception.breakpoint"
         }
       ]
     },
@@ -191,5 +191,10 @@
         "title": "%exception_breakpoint_command_text%"
       }
     ]
+  },
+  "__metadata": {
+    "id": "20fb552a-4c08-44e4-b441-95ccffcc7a2b",
+    "publisherDisplayName": "Salesforce",
+    "publisherId": "656b996d-3c70-47b4-937e-e77c013faeea"
   }
 }
